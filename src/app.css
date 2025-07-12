@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Hammersmith+One&family=Hanken+Grotesk:wght@100..900&display=swap');
+@import "tailwindcss";
+@plugin "@iconify/tailwind4";
+
+html,
+body {
+    background-color: #131313;
+    color: white;
+    font-family: "Hanken Grotesk", sans-serif;
+    font-weight: 400;
+    height: 100%;
+}
+
+.hammersmith-regular {
+    font-family: "Hammersmith One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+.hammersmith-regular {
+    font-family: "Hammersmith One", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
