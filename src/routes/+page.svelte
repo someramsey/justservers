@@ -21,7 +21,7 @@
 
     <h2 class="mt-20 text-3xl text-neutral-300 text-center">Currently available games</h2>
     <div class="mt-10 flex flex-wrap justify-center ml-10 mr-10 max-w-[1100px] gap-8">
-        <!-- TODO: Set actual game thnumbnails -->
+        <!-- TODO: Set actual game thumbnails -->
         <img src={`blox.png`} alt="blox fruits" class="w-70 rounded h-full object-cover" />
         <img src={`blox.png`} alt="blox fruits" class="w-70 rounded h-full object-cover" />
         <img src={`blox.png`} alt="blox fruits" class="w-70 rounded h-full object-cover" />
