@@ -1,13 +1,9 @@
-
-
 <script lang="ts">
     import Button from "$lib/Button.svelte";
     import { fly } from "svelte/transition";
-    import ResultsPanel from "./ResultsPanel.svelte";
-    import SearchField from "./SearchField.svelte";
+    import ResultsPanel, { resultsPanelStore } from "./ResultsPanel.svelte";
+    import SearchField, { searchStateStore } from "./SearchField.svelte";
     import UserSummary from "./UserSummary.svelte";
-    import type { ResultsPanelData } from "./types/results_panel_state";
-    import type { SearchState } from "./types/search_state";
     import type { User } from "./types/user";
 
     const mockUsers: User[] = [
@@ -67,17 +63,15 @@
             profilePicture: "/roblox.png",
         },
     ];
-
+    
     type MenuState = "search" | "confirm";
     let menuState: MenuState = "search";
 
-    let searchQuery: string = "";
-    let searchState: SearchState = "idle";
-    let resultsPanelData: ResultsPanelData = {
-        state: "hidden",
-    };
     let selectedUserData: User | null = null;
 
+    const abortController = new AbortController(); 
+
+    //TODO: Actually implement
     async function fetchUsers(query: string): Promise<User[]> {
         return new Promise((resolve, reject) => {
             if (query === "err") {
@@ -93,20 +87,19 @@
         });
     }
 
-    //TODO: Implement fetch abortion
-
     let debounceTimer: number;
 
     function doDebounce(query: string) {
         clearTimeout(debounceTimer);
+        abortController.abort();
 
         if (!query.trim()) {
-            searchState = "idle";
-            resultsPanelData = { state: "hidden" };
+            searchStateStore.set("idle");
+            resultsPanelStore.hide();
             return;
         }
 
-        searchState = "waiting";
+        searchStateStore.set("waiting");
 
         debounceTimer = setTimeout(() => {
             doSearch(query);
@@ -114,23 +107,18 @@
     }
 
     async function doSearch(query: string) {
-        searchState = "searching";
+        searchStateStore.set("searching");
 
         await fetchUsers(query)
             .then((users) => {
-                resultsPanelData = {
-                    state: "results",
-                    results: users,
-                };
+                resultsPanelStore.showResults(users);
             })
             .catch((error) => {
                 console.error("Search failed:", error);
-                resultsPanelData = {
-                    state: "error",
-                };
+                resultsPanelStore.showError();
             });
 
-        searchState = "idle";
+        searchStateStore.set("idle");
     }
 
     async function onUserSelected(user: User) {
@@ -143,8 +131,8 @@
     {#if menuState === "search"}
         <div class="menu" transition:fly={{ x: "-100%", duration: 500 }}>
             <h2 class="font-light m-2 text-center text-3xl text-neutral-200"> Search your account </h2>
-            <SearchField bind:searchQuery state={searchState} onType={doDebounce} />
-            <ResultsPanel data={resultsPanelData} {onUserSelected} />
+            <SearchField onType={doDebounce} />
+            <ResultsPanel {onUserSelected} />
         </div>
     {:else if menuState === "confirm"}
         <div class="menu" transition:fly={{ x: "100%", duration: 500 }}>
