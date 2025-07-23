@@ -68,7 +68,7 @@
     let menuState: MenuState = "search";
 
     let selectedUserData: User | null = null;
-
+``
     const abortController = new AbortController(); 
 
     //TODO: Actually implement

@@ -1,6 +1,14 @@
 import axios from 'axios';
 import * as v from 'valibot';
-import { cache } from '.';
+import flatCache from 'flat-cache';
+
+export const cache = flatCache.create({
+    cacheId: 'users',
+    ttl: 60 * 60 * 1000,
+    lruSize: 10_000,
+    expirationInterval: 10 * 1000 * 60,
+    persistInterval: 10 * 1000 * 60,
+})
 
 const LegacySearchUserSchema = v.object({
     name: v.string(),
@@ -122,3 +130,5 @@ export async function searchUsers(query: string): Promise<RobloxUser[]> {
         return fetchCurrentApiAndCache(query);
     }
 }
+
+
