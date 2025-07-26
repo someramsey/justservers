@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as v from 'valibot';
 import flatCache from 'flat-cache';
-
+import { type RobloxUser, RobloxUserSchema } from '$lib/messages/roblox_user';
 export const cache = flatCache.create({
     cacheId: 'users',
     ttl: 60 * 60 * 1000,
@@ -40,7 +40,7 @@ const OmniSearchUserSchema = v.object({
 
 const RobloxOmniSearchApiResponseSchema = v.object({
     searchResults: v.array(v.object({
-        contentGroupType: v.string(), //Filter for 'User'
+        contentGroupType: v.string(), //filter for 'User'
         contents: v.array(OmniSearchUserSchema),
     })),
 });
@@ -74,14 +74,6 @@ let currentApi: 'legacy' | 'omni' = 'legacy';
 function switchApi() {
     currentApi = currentApi === 'legacy' ? 'omni' : 'legacy';
 }
-
-const RobloxUserSchema = v.object({
-    username: v.string(),
-    displayName: v.string(),
-    id: v.number(),
-});
-
-type RobloxUser = v.InferOutput<typeof RobloxUserSchema>;
 
 async function fetchCurrentApi(username: string): Promise<RobloxUser[]> {
     switch (currentApi) {
