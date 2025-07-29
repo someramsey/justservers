@@ -1,8 +1,13 @@
+import { parseRequestBody } from '$lib/util/parse_request_body';
+import { json, type RequestHandler } from '@sveltejs/kit';
+import { UserSearchRequestSchema, type UserSearchResponse } from "./schemas";
 import axios from 'axios';
 import * as v from 'valibot';
 import flatCache from 'flat-cache';
-import { type RobloxUser, RobloxUserSchema } from '$lib/messages/roblox_user';
-export const cache = flatCache.create({
+import { UserListSchema, type UserList } from './schemas';
+import { getErrorMessage } from '$lib/util/get_error_message';
+
+const cache = flatCache.create({
     cacheId: 'users',
     ttl: 60 * 60 * 1000,
     lruSize: 10_000,
@@ -75,7 +80,7 @@ function switchApi() {
     currentApi = currentApi === 'legacy' ? 'omni' : 'legacy';
 }
 
-async function fetchCurrentApi(username: string): Promise<RobloxUser[]> {
+async function fetchCurrentApi(username: string): Promise<UserList> {
     switch (currentApi) {
         case 'legacy':
             return fetchLegacySearchApi(username)
@@ -94,7 +99,9 @@ async function fetchCurrentApi(username: string): Promise<RobloxUser[]> {
     }
 }
 
-async function fetchCurrentApiAndCache(username: string): Promise<RobloxUser[]> {
+async function fetchCurrentApiAndCache(username: string): Promise<UserList> {
+    console.log(currentApi);
+
     return fetchCurrentApi(username)
         .then(result => {
             cache.setKey(username, result);
@@ -102,11 +109,11 @@ async function fetchCurrentApiAndCache(username: string): Promise<RobloxUser[]> 
         });
 }
 
-export async function searchUsers(query: string): Promise<RobloxUser[]> {
+async function searchUsers(query: string): Promise<UserList> {
     const cached = cache.get(query);
 
     if (cached) {
-        const { success, output } = v.safeParse(v.array(RobloxUserSchema), cached);
+        const { success, output } = v.safeParse(UserListSchema, cached);
 
         if (success) {
             return output;
@@ -114,13 +121,25 @@ export async function searchUsers(query: string): Promise<RobloxUser[]> {
             cache.removeKey(query);
         }
     }
-
     try {
-        return fetchCurrentApiAndCache(query)
+        return await fetchCurrentApiAndCache(query)
     } catch {
         switchApi();
-        return fetchCurrentApiAndCache(query);
+        return await fetchCurrentApiAndCache(query);
     }
 }
 
+async function trySearchUsers(query: string): Promise<UserSearchResponse> {
+    try {
+        const searchResult = await searchUsers(query);
+        return { success: true, data: searchResult };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) };
+    }
+}
+export const POST: RequestHandler = async ({ request }) => {
+    const { query } = await parseRequestBody(request, UserSearchRequestSchema);
+    const results = await trySearchUsers(query);
 
+    return json(results);
+};

@@ -1,97 +1,35 @@
 <script lang="ts">
     import Button from "$lib/Button.svelte";
+    import axios, { isAxiosError } from "axios";
+    import { onDestroy } from "svelte";
     import { fly } from "svelte/transition";
-    import ResultsPanel, { resultsPanelStore } from "./ResultsPanel.svelte";
-    import SearchField, { searchStateStore } from "./SearchField.svelte";
+    import * as v from "valibot";
+    import {
+        ThumbnailSearchResponseSchema,
+        type ThumbnailReference,
+        type ThumbnailSearchRequest,
+    } from "../api/search/thumbnails/schemas";
+    import { UserSearchResponseSchema, type UserSearchRequest } from "../api/search/users/schemas";
+    import ResultsPanel from "./ResultsPanel.svelte";
+    import SearchField from "./SearchField.svelte";
     import UserSummary from "./UserSummary.svelte";
+    import { menuStateStore } from "./stores/menu_state";
+    import { resultsPanelStore } from "./stores/results_panel";
+    import { searchStateStore } from "./stores/search_state";
+    import { selectedUserStore } from "./stores/selected_user";
     import type { User } from "./types/user";
 
-    const mockUsers: User[] = [
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "123456789",
-            username: "john_doe",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "987654321",
-            username: "jane_smith",
-            profilePicture: "/blox.png",
-        },
-        {
-            id: "456789123",
-            username: "cool_gamer",
-            profilePicture: "/roblox.png",
-        },
-        {
-            id: "789123456",
-            username: "pro_player",
-            profilePicture: "/blox.png",
-        },
-        {
-            id: "321654987",
-            username: "john_player",
-            profilePicture: "/roblox.png",
-        },
-    ];
-    
-    type MenuState = "search" | "confirm";
-    let menuState: MenuState = "search";
+    let activeAbortController: AbortController | null = null;
 
-    let selectedUserData: User | null = null;
-``
-    const abortController = new AbortController(); 
-
-    //TODO: Actually implement
-    async function fetchUsers(query: string): Promise<User[]> {
-        return new Promise((resolve, reject) => {
-            if (query === "err") {
-                reject(new Error("Simulated API error"));
-                return;
-            }
-
-            setTimeout(() => {
-                const results = mockUsers.filter((user) => user.username.toLowerCase().includes(query.toLowerCase()) || user.id.includes(query));
-
-                resolve(results);
-            }, 500);
-        });
-    }
-
-    let debounceTimer: number;
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
     function doDebounce(query: string) {
         clearTimeout(debounceTimer);
-        abortController.abort();
+
+        if (activeAbortController) {
+            activeAbortController.abort();
+            activeAbortController = null;
+        }
 
         if (!query.trim()) {
             searchStateStore.set("idle");
@@ -103,45 +41,99 @@
 
         debounceTimer = setTimeout(() => {
             doSearch(query);
-        }, 500);
+        }, 800);
     }
 
     async function doSearch(query: string) {
         searchStateStore.set("searching");
 
-        await fetchUsers(query)
-            .then((users) => {
-                resultsPanelStore.showResults(users);
-            })
-            .catch((error) => {
-                console.error("Search failed:", error);
-                resultsPanelStore.showError();
-            });
+        try {
+            activeAbortController = new AbortController();
 
-        searchStateStore.set("idle");
+            const searchResult = await axios
+                .post("/api/search/users", { query } satisfies UserSearchRequest, {
+                    responseType: "json",
+                    signal: activeAbortController.signal,
+                })
+                .then((resp) => v.parse(UserSearchResponseSchema, resp.data));
+
+            if (!searchResult.success) {
+                resultsPanelStore.showError();
+                searchStateStore.set("idle");
+                console.error("Search failed:", searchResult.message);
+                return;
+            }
+
+            resultsPanelStore.showResults(searchResult.data!);
+
+            const thumbnailSearchTargets = searchResult.data.map((user) => user.id);
+            const thumbnailSearchResult = await axios
+                .post("/api/search/thumbnails", { targets: thumbnailSearchTargets } satisfies ThumbnailSearchRequest, {
+                    responseType: "json",
+                    signal: activeAbortController.signal,
+                })
+                .then((resp) => v.parse(ThumbnailSearchResponseSchema, resp.data));
+
+            if (thumbnailSearchResult.success) {
+                resultsPanelStore.showResults(
+                    searchResult.data.map((user) => {
+                        return {
+                            ...user,
+                            profileUrl: thumbnailSearchResult.data.find(
+                                (thumb: ThumbnailReference) => thumb.userId === user.id
+                            )?.thumbnailUrl,
+                        };
+                    })
+                );
+            } else {
+                console.error("Thumbnail search failed:", thumbnailSearchResult.message);
+            }
+
+            searchStateStore.set("idle");
+        } catch (error) {
+            if (isAxiosError(error) && error.code === "ERR_CANCELED") {
+                console.log("Search request was canceled.");
+                return;
+            }
+
+            resultsPanelStore.showError();
+            console.error("Search failed:", error);
+        }
     }
 
     async function onUserSelected(user: User) {
-        selectedUserData = user;
-        menuState = "confirm";
+        selectedUserStore.set(user);
+        menuStateStore.set("confirm");
     }
+
+    onDestroy(() => {
+        if (activeAbortController) {
+            activeAbortController.abort();
+            activeAbortController = null;
+        }
+
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+    });
 </script>
 
 <main>
-    {#if menuState === "search"}
+    {#if $menuStateStore === "search"}
         <div class="menu" transition:fly={{ x: "-100%", duration: 500 }}>
-            <h2 class="font-light m-2 text-center text-3xl text-neutral-200"> Search your account </h2>
+            <h2 class="font-light m-2 text-center text-3xl text-neutral-200">Search your account</h2>
             <SearchField onType={doDebounce} />
             <ResultsPanel {onUserSelected} />
         </div>
-    {:else if menuState === "confirm"}
+    {:else if $menuStateStore === "confirm"}
         <div class="menu" transition:fly={{ x: "100%", duration: 500 }}>
-            <h2 class="font-light m-2 text-center text-3xl text-neutral-200"> Is this your account? </h2>
+            <h2 class="font-light m-2 text-center text-3xl text-neutral-200">Is this your account?</h2>
 
-            <UserSummary user={selectedUserData} />
+            <UserSummary user={$selectedUserStore} />
 
             <div class="flex mt-4 items-center justify-center">
-                <Button variant="outlined" class="px-4 py-2 m-auto flex" onclick={() => (menuState = "search")}>No, search again</Button>
+                <Button variant="outlined" class="px-4 py-2 m-auto flex" onclick={() => menuStateStore.set("search")}
+                    >No, keep searching</Button>
                 <Button variant="filled" class="px-4 py-2 font-bold m-auto flex">Confirm</Button>
             </div>
         </div>

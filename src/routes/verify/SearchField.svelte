@@ -1,9 +1,5 @@
 <script context="module" lang="ts">
-    import { writable } from "svelte/store";
-    import type { SearchState } from "./types/search_state";
-
-    export const searchStateStore = writable<SearchState>("idle");
-    const searchQueryStore = writable<string>("");
+    import { searchStateStore, searchQueryStore } from "./stores/search_state";
 </script>
 
 <script lang="ts">

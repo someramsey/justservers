@@ -1,24 +1,6 @@
 <script>
     import { goto } from "$app/navigation";
-    import { Button } from "$lib";
-    import { onMount } from "svelte";
-    import { RobloxUserSearchResult } from "$lib/messages/roblox_user";
-    import * as v from 'valibot';
-
-    let data = "unset";
-
-    onMount(() => {
-        const source = new EventSource("/api/search");
-
-        source.onmessage = ({data}) => {
-            const results = v.parse(v.array(RobloxUserSearchResult), data);
-        };
-
-        source.onerror = (err) => {
-            console.error("SSE Error:", err);
-            source.close();
-        };
-    });
+    import Button from "$lib/Button.svelte";
 </script>
 
 <main class="flex flex-col items-center justify-center mt-[10vh] m-10">
@@ -27,10 +9,6 @@
         <p class="hanken-regular text-neutral-300 max-w-100 text-2xl">
             We want paid private servers to be available to <b>everyone</b> for free
         </p>
-
-        <h1>
-            {data}
-        </h1>
 
         <Button
             variant="filled"
@@ -68,17 +46,17 @@
         <img
             src={`blox.png`}
             alt="blox fruits"
-            class="w-70 rounded h-full object-cover"
+            class="min-w-70 h-50 rounded object-cover"
         />
         <img
             src={`blox.png`}
             alt="blox fruits"
-            class="w-70 rounded h-full object-cover"
+            class="min-w-70 h-50 rounded object-cover"
         />
         <img
             src={`blox.png`}
             alt="blox fruits"
-            class="w-70 rounded h-full object-cover"
+            class="min-w-70 h-50 rounded object-cover"
         />
     </div>
 </main>
@@ -90,13 +68,13 @@
     <div class="flex flex-wrap items-center justify-evenly mt-8">
         <!-- TODO: Add links for socials -->
         <a href="discord" class="p-5">
-            <img src="./social/discord.png" width="140" alt="" />
+            <img src="./social/discord.png" width="150" alt="" />
         </a>
         <a href="discord" class="p-5">
             <img src="./social/youtube.png" width="130" alt="" />
         </a>
         <a href="discord" class="p-5">
-            <img src="./social/tiktok.png" width="140" alt="" />
+            <img src="./social/tiktok.png" width="135" alt="" />
         </a>
     </div>
 </footer>
