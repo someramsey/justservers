@@ -1,10 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Hammersmith+One&family=Hanken+Grotesk:wght@100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Hammersmith+One&family=Hanken+Grotesk:wght@100..900&display=swap");
 @import "tailwindcss";
 @plugin "@iconify/tailwind4";
 
 html,
 body {
-    background-color: #131313;
+    background: linear-gradient(-45deg, rgb(20, 20, 20), rgb(15, 15, 15));
+    /* background-color: #131313; */
     color: white;
     font-family: "Hanken Grotesk", sans-serif;
     font-weight: 400;
@@ -16,8 +17,10 @@ body {
     font-weight: 400;
     font-style: normal;
 }
-.hammersmith-regular {
-    font-family: "Hammersmith One", sans-serif;
-    font-weight: 400;
-    font-style: normal;
+
+:root {
+    --toastBackground: rgba(25, 25, 25);
+    --toastColor: #d8d8d8;
+    --toastBorderRadius: 0.3rem;
+    --toastBarBackground: rgb(80, 80, 80);
 }
